@@ -1,4 +1,4 @@
-setwd("~/SFcrime/")
+setwd("~/SFcrime/") #Set to whatever your working directory is. 
 
 library(caret)
 library(lubridate)
@@ -24,39 +24,16 @@ testdata$Years <- as.factor(year(testdata$Dates))
 testdata$Months <- as.factor(months(testdata$Dates))
 testdata$Hours <- as.factor(hour(testdata$Dates))
 
-#Create as smaller dataset (2% of traindata) to build a model on. 
-set.seed(50)
-trainsmall <- traindata[sample(1:nrow(traindata), round(nrow(traindata)/50, 0)),]
-
-outersect <- function(x, y) {
-  sort(c(setdiff(x, y),
-         setdiff(y, x)))
-}
-
-##See which Category variables have not been included and add them if necessary. 
-outersect(unique(trainsmall$Category), unique(traindata$Category))
-
-##"TREA" is missing, so add it. 
-trainsmall <- rbind(trainsmall, traindata[head(which(traindata$Category=="TREA"),1),])
-trainsmall <- trainsmall[order(trainsmall$Dates),]
-trainsmall <- droplevels(trainsmall)
-trainsmall <- trainsmall[,-5]
-
-#Build random forst model.
+#Build lda model.  
 set.seed(1234)
 Sys.time()
-fit <- train(Category ~ PdDistrict + Years + Months + DayOfWeek + Hours + X + Y, method="rf", data=trainsmall)
+fit <- train(Category ~ PdDistrict + Years + Months + DayOfWeek + Hours + X + Y, data=traindata, method="lda")
 Sys.time()
 
+#Build solution from LDA fit.
 solution <- predict(fit, testdata, type="prob")
 solution <- cbind(Id=testdata$Id, solution)
-
-#Check to see if solution has all the Category variables as traindata (or trainnames) 
-outersect(names(solution), make.names(trainnames))
 
 names(solution) <- c("Id", trainnames)
 
 write.csv(solution, "solution.csv", row.names=F)
-
-
-
